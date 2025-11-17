@@ -1,0 +1,38 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+
+# IDEs
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Python test/cache/build
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Logs and runtime
+*.log
+*.sqlite
+*.db
+data/
+
+# Env files
+.env
+.env.* 
+
+# Others
+*.pyc
