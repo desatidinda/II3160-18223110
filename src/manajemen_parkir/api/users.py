@@ -1,19 +1,16 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
 
-from manajemen_parkir.infrastructure.user_repository import InMemoryUserRepository
 from manajemen_parkir.domain.user import User, Vehicle
+from manajemen_parkir.domain.auth import Akun
+from manajemen_parkir.api.dependencies import (
+    _shared_user_repo,
+    verify_token_dependency,
+)
 
-router = APIRouter(prefix="/users", tags=["Users"])
-
-_shared_user_repo = InMemoryUserRepository()
-
-
-class CreateUserRequest(BaseModel):
-    name: str
-    email: Optional[str] = None
+router = APIRouter(prefix="/users", tags=["Users & Vehicles"])
 
 
 class CreateVehicleRequest(BaseModel):
@@ -22,26 +19,26 @@ class CreateVehicleRequest(BaseModel):
     vehicle_type: Optional[str] = None
 
 
-@router.post("/", status_code=201)
-def create_user(req: CreateUserRequest):
-    user = User.create(name=req.name, email=req.email)
-    _shared_user_repo.save(user)
-    return {"id": str(user.id), "name": user.name, "email": user.email}
-
-
 @router.post("/vehicle", status_code=201)
-def add_vehicle(req: CreateVehicleRequest):
+def add_vehicle(
+    req: CreateVehicleRequest,
+    current_akun: Akun = Depends(verify_token_dependency),
+):
     user = _shared_user_repo.get_by_id(req.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    v = Vehicle.create(plate=req.plate, vehicle_type=req.vehicle_type)
+    
+    v = Vehicle.create_legacy(plate=req.plate, vehicle_type=req.vehicle_type)
     user.vehicles.append(v)
     _shared_user_repo.save(user)
     return {"vehicle_id": str(v.id), "plate": v.plate}
 
 
 @router.get("/{user_id}")
-def get_user(user_id: UUID):
+def get_user(
+    user_id: UUID,
+    current_akun: Akun = Depends(verify_token_dependency),
+):
     user = _shared_user_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -57,7 +54,7 @@ def get_user(user_id: UUID):
 
 
 @router.get("/")
-def list_users():
+def list_users(current_akun: Akun = Depends(verify_token_dependency)):
     users = _shared_user_repo.list()
     return [
         {
@@ -71,7 +68,10 @@ def list_users():
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: UUID):
+def delete_user(
+    user_id: UUID,
+    current_akun: Akun = Depends(verify_token_dependency),
+):
     existed = _shared_user_repo.delete(user_id)
     if not existed:
         raise HTTPException(status_code=404, detail="User not found")
