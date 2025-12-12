@@ -6,7 +6,7 @@ from uuid import UUID
 from manajemen_parkir.domain.user import User, Vehicle
 from manajemen_parkir.domain.auth import Akun
 from manajemen_parkir.api.dependencies import (
-    _shared_user_repo,
+    get_user_repository,
     verify_token_dependency,
 )
 
@@ -23,14 +23,15 @@ class CreateVehicleRequest(BaseModel):
 def add_vehicle(
     req: CreateVehicleRequest,
     current_akun: Akun = Depends(verify_token_dependency),
+    user_repo = Depends(get_user_repository),
 ):
-    user = _shared_user_repo.get_by_id(req.user_id)
+    user = user_repo.get_by_id(req.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     v = Vehicle.create_legacy(plate=req.plate, vehicle_type=req.vehicle_type)
     user.vehicles.append(v)
-    _shared_user_repo.save(user)
+    user_repo.save(user)
     return {"vehicle_id": str(v.id), "plate": v.plate}
 
 
@@ -38,8 +39,9 @@ def add_vehicle(
 def get_user(
     user_id: UUID,
     current_akun: Akun = Depends(verify_token_dependency),
+    user_repo = Depends(get_user_repository),
 ):
-    user = _shared_user_repo.get_by_id(user_id)
+    user = user_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {
@@ -54,8 +56,11 @@ def get_user(
 
 
 @router.get("/")
-def list_users(current_akun: Akun = Depends(verify_token_dependency)):
-    users = _shared_user_repo.list()
+def list_users(
+    current_akun: Akun = Depends(verify_token_dependency),
+    user_repo = Depends(get_user_repository),
+):
+    users = user_repo.list()
     return [
         {
             "id": str(u.id),
@@ -71,8 +76,9 @@ def list_users(current_akun: Akun = Depends(verify_token_dependency)):
 def delete_user(
     user_id: UUID,
     current_akun: Akun = Depends(verify_token_dependency),
+    user_repo = Depends(get_user_repository),
 ):
-    existed = _shared_user_repo.delete(user_id)
+    existed = user_repo.delete(user_id)
     if not existed:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "deleted"}

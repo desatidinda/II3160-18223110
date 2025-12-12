@@ -13,6 +13,9 @@ class InMemoryUserRepository:
 
     def get_by_id(self, user_id: UUID) -> Optional[User]:
         return self._store.get(user_id)
+    
+    def find_by_id(self, user_id: UUID) -> Optional[User]:
+        return self.get_by_id(user_id)
 
     def find_by_plate(self, plate: str) -> Optional[Vehicle]:
         for user in self._store.values():

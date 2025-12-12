@@ -7,14 +7,10 @@ from datetime import datetime
 from manajemen_parkir.domain.auth import Akun
 from manajemen_parkir.api.dependencies import (
     verify_token_dependency,
-    _shared_slot_service,
+    get_slot_service,
 )
 
 router = APIRouter(prefix="/slots", tags=["Alokasi Slot"])
-
-
-def get_slot_service():
-    return _shared_slot_service
 
 
 # Request Models
@@ -127,8 +123,8 @@ def list_slots(
     lantai: Optional[int] = Query(None, description="Filter berdasarkan lantai"),
     status: Optional[str] = Query(None, description="Filter berdasarkan status (TERSEDIA/TERISI/RUSAK)"),
     current_akun: Akun = Depends(verify_token_dependency),
+    service = Depends(get_slot_service),
 ):
-    service = get_slot_service()
     
     if lantai is not None:
         slots = service.repository.list_by_lantai(lantai)
@@ -169,8 +165,8 @@ def list_slots(
 def list_available_slots(
     lantai: Optional[int] = Query(None, description="Filter berdasarkan lantai"),
     current_akun: Akun = Depends(verify_token_dependency),
+    service = Depends(get_slot_service),
 ):
-    service = get_slot_service()
     slots = service.get_slot_tersedia(lantai=lantai)
     
     return [
@@ -188,16 +184,16 @@ def list_available_slots(
 @router.get("/statistik")
 def get_statistics(
     current_akun: Akun = Depends(verify_token_dependency),
+    service = Depends(get_slot_service),
 ):
-    service = get_slot_service()
     return service.get_statistik_slot()
 
 
 @router.get("/statistik/lantai")
 def get_statistics_per_floor(
     current_akun: Akun = Depends(verify_token_dependency),
+    service = Depends(get_slot_service),
 ):
-    service = get_slot_service()
     return service.get_statistik_per_lantai()
 
 
@@ -205,8 +201,8 @@ def get_statistics_per_floor(
 def get_slot(
     slot_id: UUID,
     current_akun: Akun = Depends(verify_token_dependency),
+    service = Depends(get_slot_service),
 ):
-    service = get_slot_service()
     slot = service.repository.get_by_id(slot_id)
     
     if not slot:

@@ -5,10 +5,10 @@ from manajemen_parkir.api.auth import router as auth_router
 from manajemen_parkir.api.slots import router as slots_router
 
 app = FastAPI(title="II3160 Smart Parking System", version="0.1.0")
-app.include_router(auth_router, prefix="/api")
-app.include_router(parking_router, prefix="/api")
-app.include_router(users_router, prefix="/api")
-app.include_router(slots_router, prefix="/api")
+app.include_router(auth_router)
+app.include_router(parking_router)
+app.include_router(users_router)
+app.include_router(slots_router)
 
 
 @app.get("/")

@@ -146,50 +146,97 @@ class AuthService:
 
 
 class ParkingService:
-    def __init__(self, repo: Optional[InMemorySesiParkirRepository] = None, slot_service=None):
-        self.repo = repo or InMemorySesiParkirRepository()
+    def __init__(
+        self, 
+        sesi_repo: Optional[InMemorySesiParkirRepository] = None,
+        user_repo = None,
+        slot_repo = None
+    ):
+        self.repo = sesi_repo or InMemorySesiParkirRepository()
+        self.user_repo = user_repo
+        self.slot_repo = slot_repo
         self.tarif = ParkingTariff(price_per_hour=3000.0, max_daily=50000.0)
-        self.slot_service = slot_service 
 
     def start_parking(
         self,
-        kode_plat: str,
-        tipe_kendaraan: Optional[str] = None,
-        user_id: Optional[UUID] = None,
-        vehicle_id: Optional[UUID] = None,
-        slot_id: Optional[UUID] = None,
+        user_id: UUID,
+        vehicle_id: UUID,
+        slot_id: Optional[UUID]
     ) -> SesiParkir:
-        from manajemen_parkir.domain.value_objects import NomorPlat
-
-        nomor = NomorPlat(kode=kode_plat, tipe_kendaraan=tipe_kendaraan)
-        sesi = SesiParkir(nomor_plat=nomor, owner_id=user_id, vehicle_id=vehicle_id)
+        vehicle = None
+        if self.user_repo:
+            user = self.user_repo.find_by_id(user_id)
+            if not user:
+                raise ValueError("User tidak ditemukan")
+            
+            vehicle = next((v for v in user.vehicles if v.id == vehicle_id), None)
+            if not vehicle:
+                raise ValueError("Kendaraan tidak ditemukan untuk user ini")
+        
+        if slot_id and self.slot_repo:
+            from manajemen_parkir.domain.alokasi_slot import StatusSlot
+            slot = self.slot_repo.find_by_id(slot_id)
+            if not slot:
+                raise ValueError("Slot parkir tidak ditemukan")
+            if slot.status_ketersediaan.status != StatusSlot.TERSEDIA:
+                raise ValueError("Slot parkir tidak tersedia")
+            slot.tandai_terisi()
+            self.slot_repo.save(slot)
+        
+        # Use vehicle's nomor_plat if available, otherwise create default
+        if vehicle and vehicle.nomor_plat:
+            nomor = vehicle.nomor_plat
+        else:
+            from manajemen_parkir.domain.value_objects import NomorPlat
+            nomor = NomorPlat(kode="TEMP", tipe_kendaraan="MOBIL")
+        
+        sesi = SesiParkir(
+            nomor_plat=nomor,
+            owner_id=user_id,
+            vehicle_id=vehicle_id,
+            slot_id=slot_id
+        )
         self.repo.save(sesi)
-        
-        if slot_id and self.slot_service:
-            try:
-                self.slot_service.update_status_slot(slot_id, "TERISI")
-            except ValueError:
-                pass
-        
         return sesi
 
-    def end_parking(self, id_sesi: UUID, slot_id: Optional[UUID] = None) -> SesiParkir:
-        sesi = self.repo.get_by_id(id_sesi)
+    def end_parking(self, sesi_id: UUID) -> SesiParkir:
+        sesi = self.repo.get_by_id(sesi_id)
         if not sesi:
             raise ValueError("Sesi parkir tidak ditemukan")
+        if sesi.waktu_keluar is not None:
+            raise ValueError("Sesi parkir sudah selesai")
+        
         sesi.check_out(self.tarif)
         self.repo.save(sesi)
         
-        if slot_id and self.slot_service:
-            try:
-                self.slot_service.update_status_slot(slot_id, "TERSEDIA")
-            except ValueError:
-                pass
+        if sesi.slot_id and self.slot_repo:
+            slot = self.slot_repo.find_by_id(sesi.slot_id)
+            if slot:
+                slot.tandai_tersedia()
+                self.slot_repo.save(slot)
         
         return sesi
-
-    def get(self, id_sesi: UUID) -> Optional[SesiParkir]:
-        return self.repo.get_by_id(id_sesi)
-
+    
+    def get_active_sessions_by_user(self, user_id: UUID):
+        all_sessions = self.repo.list()
+        return [s for s in all_sessions if s.owner_id == user_id and s.waktu_keluar is None]
+    
+    def get_session_history_by_user(self, user_id: UUID):
+        all_sessions = self.repo.list()
+        return [s for s in all_sessions if s.owner_id == user_id and s.waktu_keluar is not None]
+    
+    def calculate_parking_fee(self, sesi_id: UUID) -> Decimal:
+        sesi = self.repo.get_by_id(sesi_id)
+        if not sesi:
+            raise ValueError("Sesi parkir tidak ditemukan")
+        if sesi.durasi:
+            return self.tarif.calculate(sesi.durasi.total_jam)
+        return Decimal("0")
+    
+    def get(self, sesi_id: UUID):
+        """Get session by ID"""
+        return self.repo.get_by_id(sesi_id)
+    
     def list(self):
+        """List all sessions"""
         return self.repo.list()

@@ -26,6 +26,7 @@ class SesiParkir:
     biaya_final: Optional[BiayaFinal] = None
     owner_id: Optional[UUID] = None
     vehicle_id: Optional[UUID] = None
+    slot_id: Optional[UUID] = None
 
     def check_out(self, tarif):
         if self.status != StatusSesi.AKTIF:

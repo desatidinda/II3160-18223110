@@ -2,21 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 from uuid import UUID, uuid4
-
-
-@dataclass(frozen=True)
-class NomorPlat:
-    kode_plat: str
-    tipe_kendaraan: str  # "MOTOR" atau "MOBIL"
-    
-    def __post_init__(self):
-        if not self.kode_plat:
-            raise ValueError("Kode plat tidak boleh kosong")
-        if self.tipe_kendaraan not in ["MOTOR", "MOBIL"]:
-            raise ValueError("Tipe kendaraan harus MOTOR atau MOBIL")
-    
-    def __str__(self) -> str:
-        return f"{self.kode_plat} ({self.tipe_kendaraan})"
+from manajemen_parkir.domain.value_objects import NomorPlat
 
 
 # Entity
@@ -37,7 +23,7 @@ class Vehicle:
         tahun: Optional[int] = None,
         warna: Optional[str] = None
     ) -> "Vehicle":
-        nomor_plat = NomorPlat(kode_plat=kode_plat, tipe_kendaraan=tipe_kendaraan)
+        nomor_plat = NomorPlat(kode=kode_plat, tipe_kendaraan=tipe_kendaraan)
         return Vehicle(
             id=uuid4(),
             nomor_plat=nomor_plat,
@@ -93,6 +79,10 @@ class User:
         return User(id=uuid4(), name=name, email=email, akun_id=akun_id)
     
     def tambah_kendaraan(self, vehicle: Vehicle):
+        self.vehicles.append(vehicle)
+    
+    def add_vehicle(self, nomor_plat: str, jenis_kendaraan: str, merek: Optional[str] = None, model: Optional[str] = None):
+        vehicle = Vehicle.create(kode_plat=nomor_plat, tipe_kendaraan=jenis_kendaraan)
         self.vehicles.append(vehicle)
     
     def tambah_metode_pembayaran(self, metode: MetodePembayaran):

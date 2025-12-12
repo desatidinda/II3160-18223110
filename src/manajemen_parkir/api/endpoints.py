@@ -8,8 +8,10 @@ from decimal import Decimal
 from manajemen_parkir.application.services import ParkingService
 from manajemen_parkir.domain.auth import Akun
 from manajemen_parkir.api.dependencies import (
-    _shared_user_repo,
-    _shared_slot_service,
+    get_user_repository,
+    get_slot_repository,
+    get_sesi_repository,
+    get_slot_service,
     verify_token_dependency,
 )
 
@@ -29,15 +31,12 @@ class CheckInRequest(BaseModel):
         }
 
 
-_shared_parking_service = ParkingService(slot_service=_shared_slot_service)
-
-
-def get_parking_service():
-    return _shared_parking_service
-
-
-def get_user_repository():
-    return _shared_user_repo
+def get_parking_service(
+    sesi_repo = Depends(get_sesi_repository),
+    user_repo = Depends(get_user_repository),
+    slot_repo = Depends(get_slot_repository),
+):
+    return ParkingService(sesi_repo, user_repo, slot_repo)
 
 
 class SessionResponse(BaseModel):
@@ -90,6 +89,7 @@ def check_in(
     request: CheckInRequest,
     service: ParkingService = Depends(get_parking_service),
     user_repo = Depends(get_user_repository),
+    slot_repo = Depends(get_slot_repository),
     current_akun: Akun = Depends(verify_token_dependency),
 ):
     try:
@@ -109,7 +109,7 @@ def check_in(
         
         if request.slot_id:
             from manajemen_parkir.domain.alokasi_slot import StatusSlot
-            slot = _shared_slot_service.repository.get_by_id(request.slot_id)
+            slot = slot_repo.get_by_id(request.slot_id)
             if not slot:
                 raise HTTPException(status_code=404, detail=f"Slot with ID {request.slot_id} not found")
             if slot.status_ketersediaan.status != StatusSlot.TERSEDIA:
@@ -119,8 +119,6 @@ def check_in(
                 )
         
         sesi = service.start_parking(
-            kode_plat=vehicle.plate,
-            tipe_kendaraan=vehicle.vehicle_type,
             user_id=owner.id,
             vehicle_id=vehicle.id,
             slot_id=request.slot_id,
@@ -129,9 +127,6 @@ def check_in(
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        print(f"ERROR in check_in: {e}")
-        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
@@ -143,7 +138,7 @@ def check_out(
     current_akun: Akun = Depends(verify_token_dependency),
 ):
     try:
-        sesi = service.end_parking(id_sesi, slot_id=slot_id)
+        sesi = service.end_parking(id_sesi)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return _serialize_sesi(sesi)

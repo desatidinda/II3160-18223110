@@ -6,20 +6,11 @@ from typing import Optional
 from manajemen_parkir.application.services import AuthService
 from manajemen_parkir.domain.auth import Peran
 from manajemen_parkir.api.dependencies import (
-    _shared_auth_service,
-    _shared_auth_repo,
+    get_auth_service,
     security,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-
-def get_auth_service():
-    return _shared_auth_service
-
-
-def get_auth_repo():
-    return _shared_auth_repo
 
 
 class RegisterRequest(BaseModel):

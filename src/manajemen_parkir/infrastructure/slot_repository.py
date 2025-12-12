@@ -18,6 +18,10 @@ class InMemorySlotParkirRepository:
     def get_by_id(self, slot_id: UUID) -> Optional[SlotParkir]:
         return self._slots.get(slot_id)
     
+    def find_by_id(self, slot_id: UUID) -> Optional[SlotParkir]:
+        """Alias for get_by_id for compatibility"""
+        return self.get_by_id(slot_id)
+    
     def list_all(self) -> List[SlotParkir]:
         return list(self._slots.values())
     
