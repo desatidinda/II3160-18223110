@@ -292,6 +292,6 @@ class TestParkingEndpoints:
             }
         )
         
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
 

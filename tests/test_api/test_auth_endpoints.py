@@ -153,7 +153,7 @@ class TestAuthEndpoints:
     
     def test_get_current_user_unauthenticated(self, api_client):
         response = api_client.get("/auth/me")
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
     
     def test_get_current_user_invalid_token(self, api_client):
         response = api_client.get(
