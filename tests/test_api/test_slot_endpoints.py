@@ -98,7 +98,7 @@ class TestSlotEndpoints:
     
     def test_get_all_slots_unauthenticated(self, api_client):
         response = api_client.get("/slots/")
-        assert response.status_code == 403
+        assert response.status_code == 401
     
     def test_get_available_slots(self, api_client):
         token = get_admin_token(api_client)

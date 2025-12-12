@@ -64,7 +64,7 @@ class TestUserEndpoints:
             }
         )
         
-        assert response.status_code == 403
+        assert response.status_code == 401
     
     def test_add_multiple_vehicles(self, api_client):
         token, user_id = get_pengguna_token_and_user_id(api_client)
